@@ -31,7 +31,15 @@ func newServeCmd() *cobra.Command {
 				return fmt.Errorf("loading config: %w", err)
 			}
 
-			if !dev {
+			// Disabled with HYDRA_AUTO_UPDATE=off, which is what the container
+			// image sets. The updater replaces the binary on disk and restarts
+			// the systemd unit — correct on a host install, wrong in a
+			// container, where the image is the unit of update and there is no
+			// systemd to restart. Without this guard the ENV in the Dockerfile
+			// does nothing.
+			if os.Getenv("HYDRA_AUTO_UPDATE") == "off" {
+				log.Printf("Auto-update: disabled (HYDRA_AUTO_UPDATE=off)")
+			} else if !dev {
 				u := updater.NewProductionUpdater("hydramancer", Version)
 				u.SetServiceName("hydramancer")
 				u.StartAutoCheck(6*time.Hour, true)
