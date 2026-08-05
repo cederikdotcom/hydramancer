@@ -19,7 +19,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Server: ServerConfig{
-			Domain: "hydramancer.com",
+			Domain: "hydramancer.experiencenet.com",
 		},
 	}
 }

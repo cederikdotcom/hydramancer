@@ -2,7 +2,9 @@
 
 ## Overview
 
-HydraMancer is the creator onboarding portal for Experiencenet, serving a landing page at hydramancer.com. It runs on the dashboard server (78.47.174.83) on port 8087 behind hydrareverseproxy.
+HydraMancer is the creator onboarding portal for Experiencenet, serving a landing page at **hydramancer.experiencenet.com**. It runs as an Incus container on the Pi fleet, fronted by hydrascalerouter.
+
+> `hydramancer.com` is not ours and does not resolve. Earlier revisions of this runbook used it throughout; the domain is `hydramancer.experiencenet.com`.
 
 ## Creator toolchain
 
@@ -41,83 +43,109 @@ troubleshooting tool for a project that will not open, and the server side is a
 job tracker with no build capacity. Getting a broken project to open still needs
 a Windows machine with the right Unreal version on it.
 
-## Start / Stop / Restart
+## Infrastructure
+
+| | |
+|---|---|
+| Domain | `hydramancer.experiencenet.com` |
+| Public IP | 141.227.136.199 (hydraguard-brussels, node-2d5fba78) |
+| Ingress | hydrascalerouter + Traefik on hydraguard-brussels |
+| Backend | `http://10.0.0.5:30007` |
+| Host | pi-node-004-nvme (node-50ab5309) |
+| Runtime | Incus container `hydramancer`, PID 1 is `incusd` |
+| Binary | `/usr/local/bin/hydramancer` inside the container |
+
+The container has **no systemd and no journald**. Any instruction using
+`systemctl` or `journalctl` against this service is wrong.
+
+## Operations
+
+All access is via `hydracluster exec` against the host node, then `incus exec`
+into the container. See [[feedback_hydra_api_only]]: no direct SSH.
 
 ```bash
-sudo systemctl start hydramancer
-sudo systemctl stop hydramancer
-sudo systemctl restart hydramancer
-sudo systemctl status hydramancer
+HYDRACLUSTER_BIN=/home/claude-user/hydracluster/bin/hydracluster
+S=https://hydracluster.experiencenet.com
+$HYDRACLUSTER_BIN exec node-50ab5309 "/usr/bin/incus list -c ns4 -f csv" --server "$S" --admin-token "$TOKEN"
 ```
 
-## Logs
+### Restart
 
 ```bash
-journalctl -u hydramancer -f          # follow logs
-journalctl -u hydramancer --since today
+$HYDRACLUSTER_BIN exec node-50ab5309 "/usr/bin/incus restart hydramancer" --server "$S" --admin-token "$TOKEN"
 ```
 
-## Health Check
+### Version
 
 ```bash
-curl http://localhost:8087/api/v1/health
-curl https://hydramancer.com/api/v1/health
+$HYDRACLUSTER_BIN exec node-50ab5309 "/usr/bin/incus exec hydramancer -- /usr/local/bin/hydramancer version" --server "$S" --admin-token "$TOKEN"
 ```
 
-Expected response: `{"status":"ok"}`
+### Health check
+
+```bash
+curl https://hydramancer.experiencenet.com/api/v1/health     # {"status":"ok"}
+```
 
 ## Configuration
 
-Config file: `~/.hydramancer/config.yaml`
+Config file inside the container: `~/.hydramancer/config.yaml`
 
 ```yaml
 server:
-  domain: hydramancer.com
+  domain: hydramancer.experiencenet.com
 ```
-
-If no config file exists, defaults are used (domain: hydramancer.com).
 
 ## Deployment
 
-Binary is auto-updated from releases.experiencenet.com every 6 hours via hydrarelease. The systemd service restarts automatically after update.
+**This binary has no `update` command.** It does not self-update, and it is not
+on a 6-hour auto-update cycle; earlier revisions of this runbook claimed both.
+Tagging a release publishes the binary but does not deploy it.
 
-Manual deployment:
-1. Build: `make build`
-2. Copy binary to server: `scp bin/hydramancer root@78.47.174.83:/usr/local/bin/`
-3. Restart: `ssh root@78.47.174.83 systemctl restart hydramancer`
+Deploy by fetching the released binary into the container and restarting it. The
+release server serves versioned paths only, so use the explicit version. There is
+no `production/latest/` alias for this project:
+
+```bash
+# inside the container
+curl -fsSL -o /tmp/hydramancer.new \
+  https://releases.experiencenet.com/hydramancer/production/v<X.Y.Z>/hydramancer-linux-arm64
+chmod +x /tmp/hydramancer.new
+cp /usr/local/bin/hydramancer /usr/local/bin/hydramancer.backup
+mv /tmp/hydramancer.new /usr/local/bin/hydramancer
+# then, on the host
+incus restart hydramancer
+```
+
+Note the architecture: the Pi fleet is **arm64**.
+
+Adding the standard `hydrarelease/pkg/updater` update command to this binary
+would remove the manual step and make it match the other hydra services.
 
 ## Release
 
 Tag a version to trigger GitHub Actions:
+
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git -C <repo> tag v<X.Y.Z>
+git -C <repo> push origin v<X.Y.Z>
 ```
 
-The workflow builds multi-platform binaries, publishes to releases.experiencenet.com, and creates a GitHub release.
-
-## Infrastructure
-
-- **Server**: 78.47.174.83 (dashboard server)
-- **Port**: 8087
-- **Reverse proxy**: hydrareverseproxy routes hydramancer.com -> localhost:8087
-- **DNS**: A record hydramancer.com -> 78.47.174.83
-- **Systemd**: hydramancer.service
+The workflow builds multi-platform binaries, publishes them to
+`releases.experiencenet.com`, pushes an OCI image to the scale registry, and
+creates a GitHub release. Deployment is still manual, see above.
 
 ## Troubleshooting
 
-### Service won't start
-1. Check logs: `journalctl -u hydramancer -n 50`
-2. Verify binary exists: `ls -la /root/hydramancer` or `/usr/local/bin/hydramancer`
-3. Check port conflict: `ss -tlnp | grep 8087`
-
 ### Site unreachable
-1. Check service: `systemctl status hydramancer`
-2. Check reverse proxy: `systemctl status hydrareverseproxy`
-3. Check DNS: `dig hydramancer.com`
-4. Check local: `curl http://localhost:8087/api/v1/health`
 
-### Auto-update not working
-1. Check logs for "Auto-update" messages
-2. Verify releases.experiencenet.com is accessible from the server
-3. Ensure service is not running in dev mode (--dev disables auto-update)
+1. Health: `curl https://hydramancer.experiencenet.com/api/v1/health`
+2. Container running? `incus list` on node-50ab5309, expect `hydramancer RUNNING`
+3. Backend listening? `ss -tlnp | grep 30007` on the host, expect `incusd`
+4. Route registered? `grep -A4 hydramancer /var/lib/hydrascalerouter/routes.json`
+   on node-2d5fba78
+5. DNS: `getent hosts hydramancer.experiencenet.com`, expect 141.227.136.199
+
+### Wrong version serving after a release
+
+Expected: the binary does not self-update. Follow Deployment above.
