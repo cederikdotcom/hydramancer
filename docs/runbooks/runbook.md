@@ -98,29 +98,50 @@ server:
 
 ## Deployment
 
-**This binary has no `update` command.** It does not self-update, and it is not
-on a 6-hour auto-update cycle; earlier revisions of this runbook claimed both.
-Tagging a release publishes the binary but does not deploy it.
+This runs as an **OCI container**, so the image is the unit of deployment:
 
-Deploy by fetching the released binary into the container and restarting it. The
-release server serves versioned paths only, so use the explicit version. There is
-no `production/latest/` alias for this project:
-
-```bash
-# inside the container
-curl -fsSL -o /tmp/hydramancer.new \
-  https://releases.experiencenet.com/hydramancer/production/v<X.Y.Z>/hydramancer-linux-arm64
-chmod +x /tmp/hydramancer.new
-cp /usr/local/bin/hydramancer /usr/local/bin/hydramancer.backup
-mv /tmp/hydramancer.new /usr/local/bin/hydramancer
-# then, on the host
-incus restart hydramancer
+```
+oci.entrypoint: hydramancer serve --dev --addr :8080
+image.id:       hydramancer:v<X.Y.Z>   (scaleregistry.experiencenet.com)
 ```
 
-Note the architecture: the Pi fleet is **arm64**.
+Tagging a release both publishes binaries to `releases.experiencenet.com` and
+pushes an OCI image to the scale registry. Deploying means moving the container
+to the new image. Copying a binary into the container is a hotfix and is **lost
+on any container recreate**, because the image still carries the old one.
 
-Adding the standard `hydrarelease/pkg/updater` update command to this binary
-would remove the manual step and make it match the other hydra services.
+### Why auto-update is off here
+
+`serve` wires `updater.StartAutoCheck(6*time.Hour, true)`, but it is skipped in
+this deployment for two independent reasons, both deliberate:
+
+- the container sets `environment.HYDRA_AUTO_UPDATE: 'off'`
+- the entrypoint passes `--dev`, and auto-update is gated on `!dev`
+
+That is correct for a container: the updater replaces a binary on disk and
+restarts a systemd unit, and there is no systemd here (PID 1 is `incusd`,
+hydramancer runs as a child). Do not "fix" this by removing the guards.
+
+### Emergency binary update
+
+`update` and `check-update` exist for host installs and for forcing a binary
+swap when redeploying the image is not practical. `--force` skips the prompt so
+it works over `hydracluster exec`:
+
+```bash
+$HYDRACLUSTER_BIN exec node-50ab5309 \
+  "/usr/bin/incus exec hydramancer -- /usr/local/bin/hydramancer update --force" \
+  --server "$S" --admin-token "$TOKEN"
+$HYDRACLUSTER_BIN exec node-50ab5309 "/usr/bin/incus restart hydramancer" \
+  --server "$S" --admin-token "$TOKEN"
+```
+
+The restart step is required: the updater's own `systemctl restart` cannot work
+in this container, so it warns and leaves the old process running the old
+binary. The previous binary is kept at `/usr/local/bin/hydramancer.backup`
+(mode 0644 by design; `chmod +x` it to roll back).
+
+Note the Pi fleet is **arm64**.
 
 ## Release
 
@@ -148,4 +169,10 @@ creates a GitHub release. Deployment is still manual, see above.
 
 ### Wrong version serving after a release
 
-Expected: the binary does not self-update. Follow Deployment above.
+Expected. Auto-update is deliberately off in the container, so a release does
+not deploy itself. Follow Deployment above.
+
+### Version reverted after a container recreate
+
+Expected if the last deploy was an emergency binary swap rather than an image
+update. The image still carries the old binary. Redeploy the image.

@@ -1,5 +1,5 @@
-github.com/cederikdotcom/hydrarelease v1.17.0 h1:/pauvDAjolS5L+m6kUmxH8SEKLWDFfovrpm5TNBdIC8=
-github.com/cederikdotcom/hydrarelease v1.17.0/go.mod h1:sb9j0Li73bPfC7dSmMNHPSV2RLUVstj+TKuXQMrnuhI=
+github.com/cederikdotcom/hydrarelease v1.17.6 h1:nufK+YIfObGHEPmTON60OeHs0Vm6nHyb98iyHwZClMs=
+github.com/cederikdotcom/hydrarelease v1.17.6/go.mod h1:sb9j0Li73bPfC7dSmMNHPSV2RLUVstj+TKuXQMrnuhI=
 github.com/cederikdotcom/hydraserve v0.1.0 h1:ZMM15dN7I1maZnSDpIUPKglU/x4gFNci+rW4Pky9wy8=
 github.com/cederikdotcom/hydraserve v0.1.0/go.mod h1:ZNsTomvqwjrn/HnvIlvWMHuozz3EG/EHyXKz9ehznbg=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=

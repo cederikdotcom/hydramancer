@@ -3,7 +3,7 @@ module github.com/cederikdotcom/hydramancer
 go 1.25.7
 
 require (
-	github.com/cederikdotcom/hydrarelease v1.17.0
+	github.com/cederikdotcom/hydrarelease v1.17.6
 	github.com/cederikdotcom/hydraserve v0.1.0
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
