@@ -31,6 +31,44 @@
             border: 1px solid #333;
             color: #818cf8;
         }
+        .toolchain {
+            max-width: 720px;
+            margin: 0 auto 80px;
+            padding: 32px;
+            background: #16161e;
+            border: 1px solid #262633;
+            border-radius: 12px;
+        }
+        .toolchain h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .toolchain p {
+            font-size: 15px;
+            color: #888;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .toolchain pre {
+            background: #0e0e14;
+            border: 1px solid #262633;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        .toolchain code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 13px;
+            color: #a5b4fc;
+            white-space: pre;
+        }
+        .toolchain .req {
+            font-size: 13px;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -41,6 +79,20 @@
             <h2>Build for <span>Experiencenet</span></h2>
             <p>HydraMancer helps game engine developers set up and deploy interactive experiences to Experiencenet as quickly as possible.</p>
             <p style="color: #555; font-size: 14px;">Coming soon — this portal is under construction.</p>
+        </div>
+
+        <div class="toolchain">
+            <h3>HydraUnrealEngine</h3>
+            <p>
+                Our packaging tool for Unreal projects. It runs preflight checks on your
+                machine, packages the build, and uploads it to us in one step.
+            </p>
+            <pre><code>Invoke-WebRequest -Uri 'https://releases.experiencenet.com/hydraunrealengine/production/latest/hydraunrealengine-windows-amd64.exe' -OutFile hydraunrealengine.exe</code></pre>
+            <p>
+                Then run <code>hydraunrealengine detect</code> to check what your machine sees,
+                or <code>hydraunrealengine serve</code> for a local web interface.
+            </p>
+            <p class="req">Windows only. Requires Unreal Engine and Visual Studio 2022 with the "Game development with C++" workload.</p>
         </div>
     </div>
 </body>

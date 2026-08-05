@@ -4,6 +4,43 @@
 
 HydraMancer is the creator onboarding portal for Experiencenet, serving a landing page at hydramancer.com. It runs on the dashboard server (78.47.174.83) on port 8087 behind hydrareverseproxy.
 
+## Creator toolchain
+
+HydraMancer is the front door for external creators (agencies and contractors
+building experiences for Experiencenet). The tool it points them at is
+**HydraUnrealEngine**, a Windows CLI that packages Unreal projects, runs
+preflight checks, and uploads builds to HydraTransfer.
+
+| | |
+|---|---|
+| Repo | [`hydraunrealengine`](https://github.com/cederikdotcom/hydraunrealengine) |
+| Runbook | `hydraunrealengine/docs/runbooks/runbook.md` |
+| Job dashboard | `https://hydraunrealengine.experiencenet.com` (repo: `hydraunrealengine-server`) |
+| Platform | Windows only, requires Unreal Engine installed locally |
+
+### What to send a creator
+
+There is no download page and no hosted installer. `…/hydraunrealengine/` and
+`…/hydraunrealengine/install.ps1` both 404. Send this PowerShell line:
+
+```powershell
+Invoke-WebRequest -Uri 'https://releases.experiencenet.com/hydraunrealengine/production/latest/hydraunrealengine-windows-amd64.exe' -OutFile hydraunrealengine.exe
+```
+
+Then `hydraunrealengine detect` reports what engine and toolchain their machine
+sees, and `hydraunrealengine serve` gives them a local web UI on port 9100 if
+they would rather not use the CLI.
+
+Keep the landing page's download command in sync with the runbook above. If a
+download page or published installer ever lands, update both.
+
+### Scope note
+
+HydraUnrealEngine packages a project that already builds. It is not a
+troubleshooting tool for a project that will not open, and the server side is a
+job tracker with no build capacity. Getting a broken project to open still needs
+a Windows machine with the right Unreal version on it.
+
 ## Start / Stop / Restart
 
 ```bash
