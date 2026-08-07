@@ -28,6 +28,7 @@ func NewServer() *Server {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /{$}", s.webLanding)
+	s.mux.HandleFunc("GET /deploy", s.webDeploy)
 	s.mux.HandleFunc("GET /api/v1/health", s.apiHealth)
 }
 
@@ -42,4 +43,9 @@ func (s *Server) apiHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) webLanding(w http.ResponseWriter, r *http.Request) {
 	s.templates.ExecuteTemplate(w, "index.html", nil)
+}
+
+// webDeploy serves the developer quickstart: how to ship a service onto Hydra.
+func (s *Server) webDeploy(w http.ResponseWriter, r *http.Request) {
+	s.templates.ExecuteTemplate(w, "deploy.html", nil)
 }

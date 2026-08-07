@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Deploy a service — HydraMancer</title>
+    {{template "head"}}
+    <style>
+        .lead { max-width: 760px; margin: 0 auto 12px; padding-top: 24px; }
+        .lead h2 { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+        .lead h2 span { color: #6366f1; }
+        .lead p { font-size: 17px; color: #999; line-height: 1.6; margin-bottom: 8px; }
+        .lead .tag { display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px;
+            background:#1e1e2e; border:1px solid #333; color:#818cf8; margin-bottom:16px; }
+
+        .steps { max-width: 760px; margin: 32px auto; counter-reset: step; }
+        .step { position: relative; padding: 24px 24px 24px 68px; margin-bottom: 16px;
+            background:#16161e; border:1px solid #262633; border-radius:12px; }
+        .step::before {
+            counter-increment: step; content: counter(step);
+            position:absolute; left:20px; top:24px; width:32px; height:32px;
+            display:flex; align-items:center; justify-content:center;
+            background:#6366f1; color:#fff; border-radius:8px; font-weight:700; font-size:15px;
+        }
+        .step h3 { font-size:18px; font-weight:600; color:#fff; margin-bottom:8px; }
+        .step p { font-size:14px; color:#999; line-height:1.6; margin-bottom:12px; }
+        .step p:last-child { margin-bottom:0; }
+        .step pre { background:#0e0e14; border:1px solid #262633; border-radius:8px;
+            padding:14px; overflow-x:auto; margin:0 0 12px; }
+        .step code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size:13px; color:#a5b4fc; white-space:pre; }
+        p code, li code { font-family: ui-monospace, Menlo, monospace; font-size:13px;
+            color:#a5b4fc; background:#0e0e14; padding:1px 5px; border-radius:4px; white-space:nowrap; }
+
+        .result { max-width:760px; margin:0 auto 40px; padding:20px 24px;
+            background:#12211a; border:1px solid #1f3d2e; border-radius:12px; color:#7fd4a3; font-size:15px; }
+        .result b { color:#a7f3c8; }
+
+        .gotchas { max-width:760px; margin:0 auto 60px; }
+        .gotchas h3 { font-size:20px; color:#fff; margin-bottom:6px; }
+        .gotchas > p { font-size:14px; color:#888; margin-bottom:20px; }
+        .rule { padding:16px 18px; margin-bottom:12px; background:#1a1512;
+            border:1px solid #3a2a1e; border-left:3px solid #d97706; border-radius:8px; }
+        .rule b { color:#fbbf24; font-size:14px; }
+        .rule p { font-size:13px; color:#a89985; line-height:1.6; margin-top:4px; }
+        .rule p code { color:#fcd34d; background:#0e0e14; }
+    </style>
+</head>
+<body>
+    {{template "header"}}
+    <div class="container">
+        <div class="lead">
+            <div class="tag">Deploy a service</div>
+            <h2>Ship a service to <span>Hydra</span></h2>
+            <p>If your service is a container that speaks HTTP, it can run on Hydra with
+               automatic HTTPS on a public <code>*.experiencenet.com</code> domain — no
+               server to rent, no certificates to manage, no reverse proxy to configure.</p>
+            <p>Five steps. The whole thing takes about fifteen minutes the first time.</p>
+        </div>
+
+        <div class="steps">
+            <div class="step">
+                <h3>Containerize it to listen on :8080, plain HTTP</h3>
+                <p>Hydra terminates TLS for you at the edge, so your service must serve
+                   <b>plain HTTP</b> — do not manage certificates yourself. Build a
+                   <b>multi-arch</b> image: the fleet runs on arm64, and a single-arch
+                   amd64 image cannot be scheduled at all.</p>
+                <pre><code>FROM golang:1.25-alpine AS build
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 go build -o /app ./cmd/app
+
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates
+COPY --from=build /app /usr/local/bin/app
+ENV HYDRA_AUTO_UPDATE=off
+EXPOSE 8080
+CMD ["app", "serve", "--listen", ":8080"]</code></pre>
+                <p>See the rules below the steps — a couple of them will bite you if you skip them.</p>
+            </div>
+
+            <div class="step">
+                <h3>Push the image to the scale registry</h3>
+                <p>Build for both architectures and push to
+                   <code>scaleregistry.experiencenet.com</code>. In CI this is a
+                   <code>docker buildx build --platform linux/amd64,linux/arm64 --push</code>.</p>
+                <pre><code>docker buildx build \
+  --platform linux/amd64,linux/arm64 --push \
+  -t scaleregistry.experiencenet.com/myapp:v1.0.0 .</code></pre>
+            </div>
+
+            <div class="step">
+                <h3>Launch it as a scale on a Hydra node</h3>
+                <p>A "scale" is your image running as a container on a Hydra node.
+                   Attach any persistent state as a disk device on the path your app
+                   writes to — never bake data or secrets into the image.</p>
+                <pre><code>incus launch scaleregistry.experiencenet.com/myapp:v1.0.0 myapp
+incus config device add myapp state disk \
+  source=/srv/scales/myapp path=/root/.myapp shift=true</code></pre>
+            </div>
+
+            <div class="step">
+                <h3>Give it a domain</h3>
+                <p>Label the scale with the domain it should answer on and the container
+                   port it listens on. That's all the router needs.</p>
+                <pre><code>incus config set myapp user.hydra.domain=myapp.experiencenet.com
+incus config set myapp user.hydra.port=8080</code></pre>
+                <p>If your service answers health checks somewhere other than <code>/</code>
+                   (e.g. it's an API with no landing page), also set
+                   <code>user.hydra.health_path=/api/v1/health</code> — otherwise the router
+                   marks it unhealthy and serves nothing.</p>
+            </div>
+
+            <div class="step">
+                <h3>Point DNS at the district</h3>
+                <p>Create an A record for <code>myapp.experiencenet.com</code> pointing at the
+                   district ingress. Set the TTL to <b>60 before you change anything</b>, so
+                   cutovers are fast and cheap to reverse.</p>
+                <p>Within about 30 seconds the router discovers the scale, requests a
+                   Let's Encrypt certificate, and starts serving.</p>
+            </div>
+        </div>
+
+        <div class="result">
+            <b>That's it.</b> <code>https://myapp.experiencenet.com</code> is live with a valid
+            certificate, health-checked and load-balanced at the edge. Moving it to another
+            node later changes nothing a user sees — the domain follows the service.
+        </div>
+
+        <div class="gotchas">
+            <h3>Rules that will save you an afternoon</h3>
+            <p>Every one of these was learned the hard way. They are not optional.</p>
+
+            <div class="rule">
+                <b>Serve plain HTTP with a --dev / --listen flag; never bind 443.</b>
+                <p>TLS terminates at the edge. If your binary's default <code>serve</code>
+                   tries to bind 80/443 and run its own autocert, it will fail inside a
+                   container. Give it an explicit plain-HTTP listen mode.</p>
+            </div>
+
+            <div class="rule">
+                <b>Build multi-arch. arm64 is not optional.</b>
+                <p>The fleet is arm64. An amd64-only image cannot be scheduled — the launch
+                   fails outright, not slowly. Every image must contain <code>linux/arm64</code>.</p>
+            </div>
+
+            <div class="rule">
+                <b>Honour <code>HYDRA_AUTO_UPDATE=off</code> in code, not just in the Dockerfile.</b>
+                <p>Setting the env var does nothing on its own. Your <code>serve</code> command must
+                   read it and skip the built-in self-updater — otherwise it rewrites its own
+                   binary inside an ephemeral container every few hours and tries to restart a
+                   systemd unit that does not exist.</p>
+            </div>
+
+            <div class="rule">
+                <b>Never declare a <code>VOLUME</code> in the Dockerfile.</b>
+                <p>The OCI runtime cannot satisfy an anonymous volume and the container fails to
+                   start with <code>Failed to mount "none"</code>. Attach persistence as an Incus
+                   disk device (step 3) instead.</p>
+            </div>
+
+            <div class="rule">
+                <b>State and secrets live on the host, never in the image.</b>
+                <p>Attach them as a disk device. Anyone who can pull your image tag can read
+                   anything baked into it. This also means a container rebuild or node move
+                   loses nothing — the data was never inside.</p>
+            </div>
+
+            <div class="rule">
+                <b>Set <code>user.hydra.health_path</code> if you don't serve <code>/</code>.</b>
+                <p>The router health-checks <code>/</code> by default. An API-only service that
+                   404s on <code>/</code> is marked down and serves 503 — while looking perfectly
+                   healthy to you on its own port.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
