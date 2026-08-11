@@ -43,6 +43,30 @@ troubleshooting tool for a project that will not open, and the server side is a
 job tracker with no build capacity. Getting a broken project to open still needs
 a Windows machine with the right Unreal version on it.
 
+## Delivery paths
+
+Creators deliver builds by one of two paths. Pick the path per agency.
+
+1. **HydraUnrealEngine to HydraTransfer** (default). The creator packages a
+   project and uploads it. See the toolchain section above. Use this for one-off
+   or occasional deliveries.
+
+2. **Perforce** (for agencies that submit often). The creator submits packaged
+   builds to a Perforce depot. A watcher reads the depot and publishes new builds
+   to the fleet on its own. No manual upload.
+
+The Perforce path is live for **Cyborn / Gallo-Romeins Museum**:
+
+| | |
+|---|---|
+| Dev getting-started | [`docs/onboarding/galloromeins-perforce-getting-started.md`](../onboarding/galloromeins-perforce-getting-started.md) |
+| Server + watcher ops | `hydraperforcewatcher/docs/runbooks/galloromeins-perforce.md` |
+| Server | `ssl:perforce.galloromeins.experiencenet.com:1666`, depot `//galloromeinsmuseum/main` |
+| Tracker | issues.experiencenet.com #479 (setup), #480 (Koen onboarding) |
+
+Send a new Cyborn developer the getting-started doc. To create their account,
+see the admin appendix in that same doc.
+
 ## Infrastructure
 
 | | |
