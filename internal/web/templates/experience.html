@@ -77,6 +77,16 @@
         .cmdtable td { color:#999; line-height:1.5; }
         .cmdtable code { font-family: ui-monospace, Menlo, monospace; font-size:12px;
             color:#a5b4fc; background:#0e0e14; padding:1px 5px; border-radius:4px; white-space:nowrap; }
+
+        /* --- additive: three entry points (web / cli / automated) --- */
+        .ways { max-width:760px; margin:18px auto 8px; display:flex; flex-direction:column; gap:10px; }
+        .way { padding:14px 18px; background:#16161e; border:1px solid #262633; border-radius:10px;
+            border-left:3px solid #6366f1; }
+        .way-k { font-size:15px; font-weight:600; color:#fff; margin-bottom:4px; }
+        .way-v { font-size:13px; color:#999; line-height:1.6; }
+        .way-v code { font-family: ui-monospace, Menlo, monospace; font-size:12px;
+            color:#a5b4fc; background:#0e0e14; padding:1px 5px; border-radius:4px; }
+        .way-v b { color:#c7c7d1; }
     </style>
 </head>
 <body>
@@ -88,9 +98,31 @@
             <p>If you build in Unreal Engine, your project can run as a streamable experience
                on Hydra — packaged, delivered, and driven through a single lifecycle:
                draft to staging to live.</p>
-            <p>You register it once in HydraExperienceLibrary, then move it forward one command
-               at a time. There are two ways to get a build in: deliver it by hand, or let
-               Perforce stage it for you automatically. Both feed the same lifecycle.</p>
+            <p>You register it once in HydraExperienceLibrary, then move it forward one step at a
+               time. There are three ways to work — in the browser, from the command line, or
+               fully automated through Perforce — and all three feed the same lifecycle.</p>
+        </div>
+
+        <div class="ways">
+            <div class="way">
+                <div class="way-k">1 · In the browser</div>
+                <div class="way-v">Package with <code>hydraunrealengine serve</code> (a local web UI,
+                    no terminal), then drive the live experience — promote, roll back, pause — from the
+                    ExperienceLibrary admin at
+                    <a href="https://hydraexperiencelibrary.experiencenet.com/admin">hydraexperiencelibrary.experiencenet.com/admin</a>.
+                    First-time register and the initial stage are still done from the CLI (below).</div>
+            </div>
+            <div class="way">
+                <div class="way-k">2 · From the command line</div>
+                <div class="way-v">Do the whole flow over SSH: package, register, stage, promote. Full
+                    control, scriptable. This is <b>mode A</b> below.</div>
+            </div>
+            <div class="way">
+                <div class="way-k">3 · Automated through Perforce</div>
+                <div class="way-v">Submit the packaged build to a stream depot; the watcher publishes and
+                    stages it for you, and you are left only with <code>promote</code>. This is
+                    <b>mode B</b> below.</div>
+            </div>
         </div>
 
         <div class="pipeline">Perforce &rarr; package &rarr; deliver &rarr; register &rarr; stage &rarr; promote &rarr; stream</div>
@@ -126,6 +158,8 @@ powershell.exe -Command "C:\Builds\hydraunrealengine.exe package \
                     <li><code>--skip-preflight</code> — skip preflight checks (Live Coding, GameplayStateTree, etc.)</li>
                     <li><code>--config</code> — build config: <code>Development</code>, <code>Shipping</code> (default), etc.</li>
                 </ul>
+                <p><b style="color:#fff;">Prefer a browser?</b> Run <code>hydraunrealengine serve --port 9100</code>
+                   for a local web UI that packages from the browser instead of the command line.</p>
             </div>
 
             <div class="step">
@@ -171,6 +205,10 @@ rsync -avz --progress \
                 <p>Once it checks out in staging, promote. This copies the staging CL to
                    production and sets the status to <code>live</code>.</p>
                 <pre><code>ssh root@&lt;experiencelibrary-host&gt; "hydraexperiencelibrary promote your-project"</code></pre>
+                <p><b style="color:#fff;">Or in the browser:</b> click <b>Promote</b> on the experience in the
+                   admin UI at <a href="https://hydraexperiencelibrary.experiencenet.com/admin">/admin</a>.
+                   Rollback, pause, resume and retire are there too; only <code>create</code> and the first
+                   <code>stage</code> need the CLI.</p>
             </div>
 
             <div class="step">
