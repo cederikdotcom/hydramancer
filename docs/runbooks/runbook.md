@@ -51,12 +51,21 @@ The portal exposes two creator front doors on the landing page:
 - **Publish an experience** (`/experience`) — Unreal builds through the
   experience lifecycle (draft &rarr; staging &rarr; live).
 
-The `/experience` page is the creator-facing home for the two build-delivery
-modes described below. It presents one lifecycle with two ways to get a build in,
-mirroring the `/deploy` quickstart layout. The two delivery-mode cards that used
-to live on the landing page now live on `/experience`. Keep the page consistent
-with `hydraexperiencelibrary/docs/getting-started.md` (the source of truth for
-the commands).
+The `/experience` page is the creator-facing home for the build-delivery modes
+described below. It opens with three entry points — in the browser, from the
+command line, or automated through Perforce — then presents one lifecycle with
+the two by-hand modes plus the Perforce mode, mirroring the `/deploy` quickstart
+layout. The delivery-mode cards that used to live on the landing page now live on
+`/experience`. Keep the page consistent with
+`hydraexperiencelibrary/docs/getting-started.md` (the source of truth for the
+commands).
+
+The web-interface entry point: packaging via `hydraunrealengine serve` (local web
+UI on :9100) and the ExperienceLibrary admin at
+`hydraexperiencelibrary.experiencenet.com/admin`, which drives the lifecycle
+(promote / rollback / pause / resume / retire — the confirmed web routes). Note
+`create` and the first `stage` have no web route; they stay CLI (mode A) or come
+from the Perforce auto-stage (mode B).
 
 Creators deliver builds by one of two modes. Pick the mode per agency.
 
