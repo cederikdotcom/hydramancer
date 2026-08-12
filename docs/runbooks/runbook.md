@@ -45,15 +45,33 @@ a Windows machine with the right Unreal version on it.
 
 ## Delivery paths
 
-Creators deliver builds by one of two paths. Pick the path per agency.
+The portal exposes two creator front doors on the landing page:
 
-1. **HydraUnrealEngine to HydraTransfer** (default). The creator packages a
-   project and uploads it. See the toolchain section above. Use this for one-off
-   or occasional deliveries.
+- **Ship a service** (`/deploy`) — containerized HTTP services onto Hydra.
+- **Publish an experience** (`/experience`) — Unreal builds through the
+  experience lifecycle (draft &rarr; staging &rarr; live).
 
-2. **Perforce** (for agencies that submit often). The creator submits packaged
-   builds to a Perforce depot. A watcher reads the depot and publishes new builds
-   to the fleet on its own. No manual upload.
+The `/experience` page is the creator-facing home for the two build-delivery
+modes described below. It presents one lifecycle with two ways to get a build in,
+mirroring the `/deploy` quickstart layout. The two delivery-mode cards that used
+to live on the landing page now live on `/experience`. Keep the page consistent
+with `hydraexperiencelibrary/docs/getting-started.md` (the source of truth for
+the commands).
+
+Creators deliver builds by one of two modes. Pick the mode per agency.
+
+1. **HydraUnrealEngine to the release server** (mode A, manual, default). The
+   creator packages a project with HydraUnrealEngine, then rsyncs the packaged
+   output to `releases.experiencenet.com:/var/www/releases/builds/<name>/<version>/`
+   and registers/stages/promotes it in HydraExperienceLibrary. This rsync-to-releases
+   path is the canonical manual delivery method. Use it for one-off or occasional
+   deliveries and for a first build.
+
+2. **Perforce** (mode B, automated, for agencies that submit often). The creator
+   submits packaged builds to a stream depot. HydraPerforce detects the changelist
+   and fires a build-notify webhook (`POST /api/v1/builds/notify`) to
+   ExperienceLibrary, which auto-stages the experience whose `--watch` target
+   matches. No manual upload; `promote` is the only manual gate.
 
 The Perforce path is live for **Cyborn / Gallo-Romeins Museum**:
 

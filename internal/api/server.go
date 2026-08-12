@@ -29,6 +29,7 @@ func NewServer() *Server {
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /{$}", s.webLanding)
 	s.mux.HandleFunc("GET /deploy", s.webDeploy)
+	s.mux.HandleFunc("GET /experience", s.webExperience)
 	s.mux.HandleFunc("GET /api/v1/health", s.apiHealth)
 }
 
@@ -48,4 +49,10 @@ func (s *Server) webLanding(w http.ResponseWriter, r *http.Request) {
 // webDeploy serves the developer quickstart: how to ship a service onto Hydra.
 func (s *Server) webDeploy(w http.ResponseWriter, r *http.Request) {
 	s.templates.ExecuteTemplate(w, "deploy.html", nil)
+}
+
+// webExperience serves the creator quickstart: how to publish an Unreal
+// experience through the draft -> staging -> live lifecycle.
+func (s *Server) webExperience(w http.ResponseWriter, r *http.Request) {
+	s.templates.ExecuteTemplate(w, "experience.html", nil)
 }

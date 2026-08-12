@@ -31,47 +31,31 @@
             border: 1px solid #333;
             color: #818cf8;
         }
-        .toolchain {
-            max-width: 720px;
-            margin: 0 auto 80px;
-            padding: 32px;
+        .doors {
+            display: flex;
+            gap: 20px;
+            max-width: 760px;
+            margin: 8px auto 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .doors .door {
+            flex: 1 1 320px;
+            text-align: left;
+            padding: 24px;
             background: #16161e;
             border: 1px solid #262633;
             border-radius: 12px;
+            color: inherit;
+            transition: border-color .15s, background .15s;
         }
-        .toolchain h3 {
-            font-size: 20px;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 8px;
-        }
-        .toolchain p {
-            font-size: 15px;
-            color: #888;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        .toolchain pre {
-            background: #0e0e14;
-            border: 1px solid #262633;
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            margin-bottom: 16px;
-        }
-        .toolchain code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 13px;
-            color: #a5b4fc;
-            white-space: pre;
-        }
-        .toolchain .req {
-            font-size: 13px;
-            color: #555;
-        }
-        .toolchain .cta {
+        .doors .door:hover { text-decoration: none; border-color: #6366f1; background: #1a1a24; }
+        .door-k { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+        .door-d { font-size: 14px; color: #999; line-height: 1.6; margin-bottom: 16px; }
+        .door-d code { font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+            color: #a5b4fc; background: #0e0e14; padding: 1px 5px; border-radius: 4px; }
+        .door-cta {
             display: inline-block;
-            margin-top: 4px;
             padding: 10px 20px;
             background: #6366f1;
             color: #fff;
@@ -79,21 +63,7 @@
             font-size: 14px;
             font-weight: 600;
         }
-        .toolchain .cta:hover { text-decoration: none; background: #4f46e5; }
-        .paths-title {
-            max-width: 720px;
-            margin: 0 auto 16px;
-            color: #fff;
-            font-size: 22px;
-            font-weight: 600;
-        }
-        .paths-title + p.paths-sub {
-            max-width: 720px;
-            margin: 0 auto 24px;
-            color: #888;
-            font-size: 15px;
-            line-height: 1.6;
-        }
+        .doors .door:hover .door-cta { background: #4f46e5; }
     </style>
 </head>
 <body>
@@ -103,43 +73,20 @@
             <div class="badge">Creator Portal</div>
             <h2>Build for <span>Experiencenet</span></h2>
             <p>HydraMancer helps game engine developers set up and deploy interactive experiences to Experiencenet as quickly as possible.</p>
-            <p><a href="/deploy" style="display:inline-block; margin-top:8px; padding:12px 24px; background:#6366f1; color:#fff; border-radius:8px; font-size:15px; font-weight:600;">Deploy a service &rarr;</a></p>
-        </div>
-
-        <h3 class="paths-title">Two ways to deliver a build</h3>
-        <p class="paths-sub">
-            Pick one path. Use the packaging tool for one-off deliveries. Use Perforce
-            if you ship builds often.
-        </p>
-
-        <div class="toolchain">
-            <h3>1. HydraUnrealEngine</h3>
-            <p>
-                Our packaging tool for Unreal projects. It runs preflight checks on your
-                machine, packages the build, and uploads it to us in one step. Best for
-                one-off or occasional deliveries.
-            </p>
-            <pre><code>Invoke-WebRequest -Uri 'https://releases.experiencenet.com/hydraunrealengine/production/latest/hydraunrealengine-windows-amd64.exe' -OutFile hydraunrealengine.exe</code></pre>
-            <p>
-                Then run <code>hydraunrealengine detect</code> to check what your machine sees,
-                or <code>hydraunrealengine serve</code> for a local web interface.
-            </p>
-            <p class="req">Windows only. Requires Unreal Engine and Visual Studio 2022 with the "Game development with C++" workload.</p>
-        </div>
-
-        <div class="toolchain">
-            <h3>2. Perforce delivery</h3>
-            <p>
-                For agencies that ship builds often. You submit packaged builds to a
-                Perforce depot. A watcher reads the depot and publishes each new build to
-                the fleet on its own. You do not upload by hand.
-            </p>
-            <p>
-                We give you a depot and an account. You connect with P4V or the
-                <code>p4</code> command line, then submit your builds to the stream.
-            </p>
-            <a class="cta" href="mailto:cederik@experiencenet.com?subject=Perforce%20delivery%20access">Ask us to set this up &rarr;</a>
-            <p class="req" style="margin-top:16px;">Needs a Perforce client (P4V or p4). We send setup steps with your account.</p>
+            <div class="doors">
+                <a class="door" href="/deploy">
+                    <div class="door-k">Ship a service</div>
+                    <div class="door-d">A container that speaks HTTP, live on a public
+                        <code>*.experiencenet.com</code> domain with automatic HTTPS.</div>
+                    <span class="door-cta">Deploy a service &rarr;</span>
+                </a>
+                <a class="door" href="/experience">
+                    <div class="door-k">Publish an experience</div>
+                    <div class="door-d">An Unreal build through the experience lifecycle:
+                        draft &rarr; staging &rarr; live.</div>
+                    <span class="door-cta">Publish an experience &rarr;</span>
+                </a>
+            </div>
         </div>
     </div>
 </body>
