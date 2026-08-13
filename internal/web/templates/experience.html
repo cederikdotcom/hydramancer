@@ -87,6 +87,26 @@
         .way-v code { font-family: ui-monospace, Menlo, monospace; font-size:12px;
             color:#a5b4fc; background:#0e0e14; padding:1px 5px; border-radius:4px; }
         .way-v b { color:#c7c7d1; }
+
+        /* --- access panel: sign in + provision --- */
+        .access { max-width:760px; margin:24px auto 8px; padding:24px; background:#131820;
+            border:1px solid #24303a; border-left:3px solid #22c55e; border-radius:12px; }
+        .access h3 { color:#fff; font-size:20px; margin-bottom:10px; }
+        .access p { color:#9aa4b0; font-size:14px; line-height:1.6; margin-bottom:14px; }
+        .access .cta { display:inline-block; padding:10px 20px; background:#6366f1; color:#fff;
+            border-radius:8px; font-size:14px; font-weight:600; border:none; cursor:pointer; }
+        .access .cta:hover { background:#4f46e5; text-decoration:none; }
+        .access .cta:disabled { opacity:.6; cursor:default; }
+        .access-who { font-size:13px; }
+        .access-who a { color:#818cf8; }
+        .access-form { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:4px; }
+        .access-form label { color:#c7c7d1; font-size:13px; }
+        .access-form select { background:#0e0e14; color:#e0e0e0; border:1px solid #262633;
+            border-radius:8px; padding:9px 10px; font-size:14px; min-width:240px; }
+        .access-result { background:#0e0e14; border:1px solid #262633; border-radius:8px;
+            padding:14px; overflow-x:auto; color:#a5f3c0; font-family: ui-monospace, Menlo, monospace;
+            font-size:13px; white-space:pre-wrap; margin-top:12px; }
+        .access-note { color:#fbbf24; }
     </style>
 </head>
 <body>
@@ -124,6 +144,31 @@
                     <b>mode B</b> below.</div>
             </div>
         </div>
+
+        {{if .CanProvision}}
+        <div class="access" id="access">
+            <h3>Get Perforce access</h3>
+            {{if .SignedIn}}
+                <p class="access-who">Signed in as <b>{{.Email}}</b> &middot; <a href="/experience/logout">sign out</a></p>
+                {{if .Orgs}}
+                <p>Pick the organization to provision Perforce access for, then request it.</p>
+                <div class="access-form">
+                    <label for="org">Organization</label>
+                    <select id="org">
+                        {{range .Orgs}}<option value="{{.OrganizationSlug}}">{{.OrganizationName}} ({{.OrganizationSlug}})</option>{{end}}
+                    </select>
+                    <button id="req" class="cta">Request Perforce access</button>
+                </div>
+                <pre id="result" class="access-result" hidden></pre>
+                {{else}}
+                <p class="access-note">You are not a member of any organization yet. Ask your admin to add you in iamnim, then reload this page.</p>
+                {{end}}
+            {{else}}
+                <p>Sign in to request a Perforce depot and account for your agency. You will choose which organization to provision for.</p>
+                <a class="cta" href="/experience/login">Sign in with iamnim &rarr;</a>
+            {{end}}
+        </div>
+        {{end}}
 
         <div class="pipeline">Perforce &rarr; package &rarr; deliver &rarr; register &rarr; stage &rarr; promote &rarr; stream</div>
         <p class="pipeline-cap">One experience, one lifecycle. The steps below cover manual
@@ -397,5 +442,41 @@ Any status ──retire──> retired</code></pre>
             </div>
         </div>
     </div>
+    <script>
+    (function () {
+      var btn = document.getElementById('req');
+      if (!btn) return;
+      btn.addEventListener('click', async function () {
+        var org = document.getElementById('org').value;
+        var res = document.getElementById('result');
+        var label = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Provisioning…';
+        res.hidden = false; res.textContent = 'Working…';
+        try {
+          var r = await fetch('/api/v1/provision/perforce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind: 'perforce', org_slug: org })
+          });
+          var d = await r.json();
+          if (r.ok) {
+            var lines = ['Server (P4PORT): ' + d.endpoint, 'User: ' + d.login, 'Depot: ' + d.scope];
+            if (d.temp_password) {
+              lines.push('Temporary password: ' + d.temp_password);
+              lines.push('You must set your own password on first login.');
+            } else {
+              lines.push('(You already had access — no new password issued.)');
+            }
+            res.textContent = lines.join('\n');
+          } else {
+            res.textContent = 'Error: ' + (d.error || ('HTTP ' + r.status));
+          }
+        } catch (e) {
+          res.textContent = 'Request failed: ' + e;
+        }
+        btn.disabled = false; btn.textContent = label;
+      });
+    })();
+    </script>
 </body>
 </html>

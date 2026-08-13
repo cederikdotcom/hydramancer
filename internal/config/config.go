@@ -19,15 +19,25 @@ type ProvisionConfig struct {
 	PerforceURL string `yaml:"perforce_url"`
 }
 
+// IAMNimConfig is the identity service the portal sends creators to for sign-in
+// and asks for their identity + org memberships.
+type IAMNimConfig struct {
+	BaseURL string `yaml:"base_url"`
+}
+
 type Config struct {
 	Server    ServerConfig    `yaml:"server"`
 	Provision ProvisionConfig `yaml:"provision"`
+	IAMNim    IAMNimConfig    `yaml:"iamnim"`
 }
 
 func DefaultConfig() Config {
 	return Config{
 		Server: ServerConfig{
 			Domain: "hydramancer.experiencenet.com",
+		},
+		IAMNim: IAMNimConfig{
+			BaseURL: "https://iamnim.com",
 		},
 	}
 }
@@ -71,5 +81,8 @@ func Load(path string) (Config, error) {
 func (c *Config) applyEnvOverrides() {
 	if v := os.Getenv("HYDRAMANCER_PROVISION_PERFORCE_URL"); v != "" {
 		c.Provision.PerforceURL = v
+	}
+	if v := os.Getenv("HYDRAMANCER_IAMNIM_URL"); v != "" {
+		c.IAMNim.BaseURL = v
 	}
 }
