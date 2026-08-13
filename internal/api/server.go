@@ -9,12 +9,15 @@ import (
 )
 
 type Server struct {
-	templates *template.Template
-	mux       *http.ServeMux
+	templates           *template.Template
+	mux                 *http.ServeMux
+	provisionPerforceURL string
 }
 
-func NewServer() *Server {
-	srv := &Server{}
+// NewServer builds the portal. provisionPerforceURL is the hydraperforceprovision
+// base URL the portal proxies to; empty disables the /provision/perforce route.
+func NewServer(provisionPerforceURL string) *Server {
+	srv := &Server{provisionPerforceURL: provisionPerforceURL}
 
 	srv.templates = template.Must(
 		template.New("").ParseFS(web.TemplateFS, "templates/*.html"),
@@ -31,6 +34,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /deploy", s.webDeploy)
 	s.mux.HandleFunc("GET /experience", s.webExperience)
 	s.mux.HandleFunc("GET /api/v1/health", s.apiHealth)
+	s.mux.HandleFunc("POST /api/v1/provision/perforce", s.handleProvisionPerforce)
 }
 
 func (s *Server) Handler() http.Handler {

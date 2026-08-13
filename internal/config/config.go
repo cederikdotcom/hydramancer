@@ -12,8 +12,16 @@ type ServerConfig struct {
 	Domain string `yaml:"domain"`
 }
 
+// ProvisionConfig points at the domain provisioning services the portal proxies
+// to. Empty URLs mean that provisioning path is disabled.
+type ProvisionConfig struct {
+	// PerforceURL is the hydraperforceprovision base URL (e.g. over the mesh).
+	PerforceURL string `yaml:"perforce_url"`
+}
+
 type Config struct {
-	Server ServerConfig `yaml:"server"`
+	Server    ServerConfig    `yaml:"server"`
+	Provision ProvisionConfig `yaml:"provision"`
 }
 
 func DefaultConfig() Config {
@@ -43,6 +51,7 @@ func Load(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			cfg.applyEnvOverrides()
 			return cfg, nil
 		}
 		return cfg, err
@@ -52,5 +61,15 @@ func Load(path string) (Config, error) {
 		return cfg, err
 	}
 
+	cfg.applyEnvOverrides()
 	return cfg, nil
+}
+
+// applyEnvOverrides lets deployment set values without a config file. The
+// container image carries no config and no state dir, so env is how the scale
+// deployment configures the provisioning URL — it survives an image rebuild.
+func (c *Config) applyEnvOverrides() {
+	if v := os.Getenv("HYDRAMANCER_PROVISION_PERFORCE_URL"); v != "" {
+		c.Provision.PerforceURL = v
+	}
 }
