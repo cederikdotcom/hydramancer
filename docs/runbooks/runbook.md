@@ -147,32 +147,45 @@ server:
   domain: hydramancer.experiencenet.com
 provision:
   perforce_url: "http://195.201.88.170:8090"   # hydraperforceprovision
+iamnim:
+  base_url: "https://iamnim.com"               # identity service
 ```
 
-The container carries no config file, so set the provisioning URL by env instead
-(it survives an image rebuild, unlike a file baked into the rootfs):
+The container carries no config file, so set values by env instead (they survive
+an image rebuild, unlike a file baked into the rootfs):
 
 ```bash
 incus config set hydramancer environment.HYDRAMANCER_PROVISION_PERFORCE_URL http://195.201.88.170:8090
+# iamnim URL defaults to https://iamnim.com; override only if needed:
+# incus config set hydramancer environment.HYDRAMANCER_IAMNIM_URL https://iamnim.com
 incus restart hydramancer
 ```
 
-## Provisioning wiring
+## Sign-in + provisioning flow
 
-`POST /api/v1/provision/perforce` proxies a creator's Perforce access request to
-**hydraperforceprovision**, forwarding their iamnim session
-(`iamnim_session` cookie, `X-Iamnim-Session` header, or `?token=`). The portal
-holds no credentials and does no validation: hydraperforceprovision checks the
-session against iamnim, confirms org membership, and mints the depot/account.
+The creator-facing flow on `/experience`:
 
-Responses: `503` (URL not configured), `401` (no session), `502` (provisioning
-service unreachable), otherwise the upstream status/body pass straight through.
+1. `GET /experience/login` → redirects to `<iamnim>/login?redirect_uri=https://<domain>/experience/authed`.
+   iamnim threads `redirect_uri` through every sign-in method; `.experiencenet.com`
+   is on its redirect allow-list.
+2. iamnim returns to `GET /experience/authed?token=<session>`, which stores the
+   token in the portal's own `iamnim_session` cookie (HttpOnly, Secure, 24h).
+3. `GET /experience` then calls iamnim `/api/me` + `/api/me/memberships` and
+   renders the "Get Perforce access" panel with an **org selector** (a person can
+   belong to several orgs) and a request button. `GET /experience/logout` clears
+   the cookie.
+4. The button POSTs to `POST /api/v1/provision/perforce`, which **proxies** to
+   hydraperforceprovision, forwarding the session (`iamnim_session` cookie,
+   `X-Iamnim-Session` header, or `?token=`). The portal holds no credentials and
+   does no validation: hydraperforceprovision checks the session against iamnim,
+   confirms membership, and mints the depot/account. Responses: `503` (URL not
+   configured), `401` (no session), `502` (provisioning service unreachable),
+   else the upstream status/body pass through.
 
 Network path: hydraperforceprovision listens on `195.201.88.170:8090`, UFW-limited
 to this portal node's egress IP (`94.224.39.25`), and is iamnim-session-gated.
 The venue egress IP can change; the durable fix is to reach it over the WireGuard
-mesh instead. A login UX on `/experience` (redirect to iamnim, then call this
-route) is still to build — the proxy is ready for it.
+mesh instead.
 
 ## Deployment
 
