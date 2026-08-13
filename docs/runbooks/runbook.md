@@ -145,7 +145,34 @@ Config file inside the container: `~/.hydramancer/config.yaml`
 ```yaml
 server:
   domain: hydramancer.experiencenet.com
+provision:
+  perforce_url: "http://195.201.88.170:8090"   # hydraperforceprovision
 ```
+
+The container carries no config file, so set the provisioning URL by env instead
+(it survives an image rebuild, unlike a file baked into the rootfs):
+
+```bash
+incus config set hydramancer environment.HYDRAMANCER_PROVISION_PERFORCE_URL http://195.201.88.170:8090
+incus restart hydramancer
+```
+
+## Provisioning wiring
+
+`POST /api/v1/provision/perforce` proxies a creator's Perforce access request to
+**hydraperforceprovision**, forwarding their iamnim session
+(`iamnim_session` cookie, `X-Iamnim-Session` header, or `?token=`). The portal
+holds no credentials and does no validation: hydraperforceprovision checks the
+session against iamnim, confirms org membership, and mints the depot/account.
+
+Responses: `503` (URL not configured), `401` (no session), `502` (provisioning
+service unreachable), otherwise the upstream status/body pass straight through.
+
+Network path: hydraperforceprovision listens on `195.201.88.170:8090`, UFW-limited
+to this portal node's egress IP (`94.224.39.25`), and is iamnim-session-gated.
+The venue egress IP can change; the durable fix is to reach it over the WireGuard
+mesh instead. A login UX on `/experience` (redirect to iamnim, then call this
+route) is still to build — the proxy is ready for it.
 
 ## Deployment
 
