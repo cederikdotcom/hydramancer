@@ -17,6 +17,8 @@ type ServerConfig struct {
 type ProvisionConfig struct {
 	// PerforceURL is the hydraperforceprovision base URL (e.g. over the mesh).
 	PerforceURL string `yaml:"perforce_url"`
+	// GitURL is the hydragitprovision base URL (e.g. over the mesh).
+	GitURL string `yaml:"git_url"`
 }
 
 // IAMNimConfig is the identity service the portal sends creators to for sign-in
@@ -81,6 +83,9 @@ func Load(path string) (Config, error) {
 func (c *Config) applyEnvOverrides() {
 	if v := os.Getenv("HYDRAMANCER_PROVISION_PERFORCE_URL"); v != "" {
 		c.Provision.PerforceURL = v
+	}
+	if v := os.Getenv("HYDRAMANCER_PROVISION_GIT_URL"); v != "" {
+		c.Provision.GitURL = v
 	}
 	if v := os.Getenv("HYDRAMANCER_IAMNIM_URL"); v != "" {
 		c.IAMNim.BaseURL = v

@@ -49,7 +49,7 @@ func newServeCmd() *cobra.Command {
 			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer cancel()
 
-			srv := api.NewServer(cfg.Provision.PerforceURL, cfg.IAMNim.BaseURL, cfg.Server.Domain)
+			srv := api.NewServer(cfg.Provision.PerforceURL, cfg.Provision.GitURL, cfg.IAMNim.BaseURL, cfg.Server.Domain)
 
 			listen := addr
 			if dev {
