@@ -182,7 +182,9 @@ session against iamnim, confirms membership, and mints access.
 - **`/experience`** → "Get Perforce access" → `POST /api/v1/provision/perforce`
   → hydraperforceprovision. Body `{kind:"perforce",org_slug}`.
 - **`/deploy`** → "Request a git repo" → `POST /api/v1/provision/git`
-  → hydragitprovision. Body `{kind:"git",org_slug,name}` (`name` is the repo).
+  → hydragitprovision. Body `{org_slug,name}` (`name` is the repo). The response
+  is `{endpoint,scope:"push",already_existed}`: `endpoint` is the git-http push
+  remote to add and push a `v*` tag to. There is no account and no temp password.
 
 Both pages reuse the **same** auth routes and the **same** `iamnim_session`
 cookie (set `Path: /`, so it covers both `/experience` and `/deploy` — there are
@@ -211,12 +213,12 @@ UFW-limited to this portal node's egress IP (`94.224.39.25`), and is
 iamnim-session-gated. The venue egress IP can change; the durable fix is to reach
 it over the WireGuard mesh instead.
 
-Network path (git): hydragitprovision is localhost-bound on its git-server host
-(it holds the Gitea admin credential), so the portal reaches it over the
-**WireGuard mesh** — set `provision.git_url` to the mesh address:port
-(`http://10.10.100.x:809x`). If it is instead exposed on a public IP, UFW-limit it
-to this portal node's egress IP exactly as the Perforce provisioner is. Either
-way it is iamnim-session-gated.
+Network path (git): hydragitprovision holds NO forge admin token. It hosts the
+per-project bare repos itself on a repo_root disk and serves iamnim-gated
+git-http, so the portal reaches it over the **WireGuard mesh**: set
+`provision.git_url` to the mesh address:port (`http://10.10.100.x:809x`). If it
+is instead exposed on a public IP, UFW-limit it to this portal node's egress IP
+exactly as the Perforce provisioner is. Either way it is iamnim-session-gated.
 
 ## Deployment
 

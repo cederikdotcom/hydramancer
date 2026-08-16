@@ -84,8 +84,9 @@
             {{if .SignedIn}}
                 <p class="access-who">Signed in as <b>{{.Email}}</b> &middot; <a href="/experience/logout">sign out</a></p>
                 {{if .Orgs}}
-                <p>Pick the organization and name your repo, then request it. You get write
-                   access on a private git repo; push a <code>v*</code> tag to ship a scale.</p>
+                <p>Pick the organization and name your repo, then request it. You get a
+                   private push remote gated by your iamnim sign-in. Add it as a git remote
+                   and push a <code>v*</code> tag to ship a scale.</p>
                 <div class="access-form">
                     <label for="org">Organization</label>
                     <select id="org">
@@ -242,16 +243,19 @@ incus config set myapp user.hydra.port=8080</code></pre>
           var r = await fetch('/api/v1/provision/git', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kind: 'git', org_slug: org, name: name })
+            body: JSON.stringify({ org_slug: org, name: name })
           });
           var d = await r.json();
           if (r.ok) {
-            var lines = ['Clone URL: ' + d.endpoint, 'Login: ' + d.login, 'Access: ' + d.scope];
-            if (d.temp_password) {
-              lines.push('Temporary password: ' + d.temp_password);
-              lines.push('You must set your own password on first login.');
-            } else {
-              lines.push('(You already had access — no new password issued.)');
+            var lines = [
+              'Push remote: ' + d.endpoint,
+              '',
+              'git remote add hydra ' + d.endpoint,
+              'git push hydra v1.0.0'
+            ];
+            if (d.already_existed) {
+              lines.push('');
+              lines.push('(Repo already existed.)');
             }
             res.textContent = lines.join('\n');
           } else {

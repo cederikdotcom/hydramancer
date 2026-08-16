@@ -56,10 +56,12 @@ func (s *Server) handleProvisionPerforce(w http.ResponseWriter, r *http.Request)
 
 // handleProvisionGit proxies a creator's git repo request to hydragitprovision,
 // forwarding their iamnim session. The portal holds no credentials:
-// hydragitprovision validates the session against iamnim and mints the repo +
-// least-privilege push access. This is a thin authenticated proxy — the real
-// auth, membership check and provisioning all happen downstream. 1:1 with
-// handleProvisionPerforce, only the upstream URL differs.
+// hydragitprovision validates the session against iamnim, confirms org
+// membership, creates a per-project bare repo and receive hook, and returns the
+// git-http push remote (the clone URL). It holds no forge admin token. This is a
+// thin authenticated pass-through; the real auth, membership check and
+// provisioning all happen downstream. 1:1 with handleProvisionPerforce, only the
+// upstream URL differs.
 func (s *Server) handleProvisionGit(w http.ResponseWriter, r *http.Request) {
 	if s.provisionGitURL == "" {
 		writeProvisionError(w, http.StatusServiceUnavailable, "git provisioning is not configured")
