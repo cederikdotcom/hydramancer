@@ -13,18 +13,22 @@ type Server struct {
 	templates            *template.Template
 	mux                  *http.ServeMux
 	provisionPerforceURL string
+	provisionGitURL      string
 	iam                  *iamnim.Client
 	domain               string
 }
 
 // NewServer builds the portal.
 //   - provisionPerforceURL: hydraperforceprovision base URL the portal proxies to
-//     (empty disables provisioning).
+//     (empty disables Perforce provisioning).
+//   - provisionGitURL: hydragitprovision base URL the portal proxies to
+//     (empty disables git provisioning).
 //   - iamnimURL: identity service used for sign-in and identity/memberships.
 //   - domain: the portal's own public domain, for building the sign-in return URL.
-func NewServer(provisionPerforceURL, iamnimURL, domain string) *Server {
+func NewServer(provisionPerforceURL, provisionGitURL, iamnimURL, domain string) *Server {
 	srv := &Server{
 		provisionPerforceURL: provisionPerforceURL,
+		provisionGitURL:      provisionGitURL,
 		iam:                  iamnim.New(iamnimURL),
 		domain:               domain,
 	}
@@ -48,6 +52,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /experience/logout", s.handleLogout)
 	s.mux.HandleFunc("GET /api/v1/health", s.apiHealth)
 	s.mux.HandleFunc("POST /api/v1/provision/perforce", s.handleProvisionPerforce)
+	s.mux.HandleFunc("POST /api/v1/provision/git", s.handleProvisionGit)
 }
 
 func (s *Server) Handler() http.Handler {
@@ -63,9 +68,29 @@ func (s *Server) webLanding(w http.ResponseWriter, r *http.Request) {
 	s.templates.ExecuteTemplate(w, "index.html", nil)
 }
 
+// deployData drives the sign-in / access panel on /deploy.
+type deployData struct {
+	SignedIn     bool
+	Email        string
+	Orgs         []iamnim.Membership
+	CanProvision bool
+}
+
 // webDeploy serves the developer quickstart: how to ship a service onto Hydra.
+// If the creator has an iamnim session (via the portal's cookie), it also renders
+// the "Request a git repo" panel with their org memberships to choose from.
 func (s *Server) webDeploy(w http.ResponseWriter, r *http.Request) {
-	s.templates.ExecuteTemplate(w, "deploy.html", nil)
+	data := deployData{CanProvision: s.provisionGitURL != ""}
+	if session := iamnimSession(r); session != "" {
+		if user, err := s.iam.Me(session); err == nil {
+			data.SignedIn = true
+			data.Email = user.Email
+			if orgs, err := s.iam.Memberships(session); err == nil {
+				data.Orgs = orgs
+			}
+		}
+	}
+	s.templates.ExecuteTemplate(w, "deploy.html", data)
 }
 
 // experienceData drives the sign-in / access panel on /experience.

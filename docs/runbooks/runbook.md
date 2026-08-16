@@ -47,7 +47,11 @@ a Windows machine with the right Unreal version on it.
 
 The portal exposes two creator front doors on the landing page:
 
-- **Ship a service** (`/deploy`) — containerized HTTP services onto Hydra.
+- **Ship a service** (`/deploy`) — containerized HTTP services onto Hydra. When
+  `provision.git_url` is set the page is session-aware and opens with a **"Request
+  a git repo"** panel (org selector + repo name), the git-push-to-deploy front
+  door (proxies to hydragitprovision, mirroring the Perforce panel on
+  `/experience`). See the sign-in + provisioning flow below.
 - **Publish an experience** (`/experience`) — Unreal builds through the
   experience lifecycle (draft &rarr; staging &rarr; live).
 
@@ -147,15 +151,21 @@ server:
   domain: hydramancer.experiencenet.com
 provision:
   perforce_url: "http://195.201.88.170:8090"   # hydraperforceprovision
+  git_url: "http://10.10.100.x:809x"           # hydragitprovision (mesh)
 iamnim:
   base_url: "https://iamnim.com"               # identity service
 ```
+
+An empty `git_url` disables the `/deploy` git-provision panel and returns `503`
+from `POST /api/v1/provision/git`; the rest of the `/deploy` quickstart still
+renders. Same for an empty `perforce_url` on `/experience`.
 
 The container carries no config file, so set values by env instead (they survive
 an image rebuild, unlike a file baked into the rootfs):
 
 ```bash
 incus config set hydramancer environment.HYDRAMANCER_PROVISION_PERFORCE_URL http://195.201.88.170:8090
+incus config set hydramancer environment.HYDRAMANCER_PROVISION_GIT_URL http://10.10.100.x:809x
 # iamnim URL defaults to https://iamnim.com; override only if needed:
 # incus config set hydramancer environment.HYDRAMANCER_IAMNIM_URL https://iamnim.com
 incus restart hydramancer
@@ -163,29 +173,52 @@ incus restart hydramancer
 
 ## Sign-in + provisioning flow
 
-The creator-facing flow on `/experience`:
+There are two provisioning front doors, both built the same way: a session-aware
+page renders an access panel, and a button POSTs to a thin proxy handler that
+forwards the iamnim session to a downstream provisioner. The portal holds no
+credentials and does no validation of its own — the downstream service checks the
+session against iamnim, confirms membership, and mints access.
+
+- **`/experience`** → "Get Perforce access" → `POST /api/v1/provision/perforce`
+  → hydraperforceprovision. Body `{kind:"perforce",org_slug}`.
+- **`/deploy`** → "Request a git repo" → `POST /api/v1/provision/git`
+  → hydragitprovision. Body `{org_slug,name}` (`name` is the repo). The response
+  is `{endpoint,scope:"push",already_existed}`: `endpoint` is the git-http push
+  remote to add and push a `v*` tag to. There is no account and no temp password.
+
+Both pages reuse the **same** auth routes and the **same** `iamnim_session`
+cookie (set `Path: /`, so it covers both `/experience` and `/deploy` — there are
+no separate `/deploy/login|authed|logout` routes):
 
 1. `GET /experience/login` → redirects to `<iamnim>/login?redirect_uri=https://<domain>/experience/authed`.
    iamnim threads `redirect_uri` through every sign-in method; `.experiencenet.com`
    is on its redirect allow-list.
 2. iamnim returns to `GET /experience/authed?token=<session>`, which stores the
-   token in the portal's own `iamnim_session` cookie (HttpOnly, Secure, 24h).
-3. `GET /experience` then calls iamnim `/api/me` + `/api/me/memberships` and
-   renders the "Get Perforce access" panel with an **org selector** (a person can
-   belong to several orgs) and a request button. `GET /experience/logout` clears
-   the cookie.
-4. The button POSTs to `POST /api/v1/provision/perforce`, which **proxies** to
-   hydraperforceprovision, forwarding the session (`iamnim_session` cookie,
-   `X-Iamnim-Session` header, or `?token=`). The portal holds no credentials and
-   does no validation: hydraperforceprovision checks the session against iamnim,
-   confirms membership, and mints the depot/account. Responses: `503` (URL not
-   configured), `401` (no session), `502` (provisioning service unreachable),
-   else the upstream status/body pass through.
+   token in the portal's own `iamnim_session` cookie (HttpOnly, Secure, 24h) and
+   redirects to `/experience`. From there the creator can navigate to `/deploy`;
+   the cookie already covers it.
+3. `GET /experience` and `GET /deploy` each call iamnim `/api/me` +
+   `/api/me/memberships` and render their access panel with an **org selector** (a
+   person can belong to several orgs). `/deploy` additionally takes a **repo name**
+   input. `GET /experience/logout` clears the cookie (the "sign out" link on both
+   pages points here).
+4. The panel button POSTs to the matching `POST /api/v1/provision/{perforce,git}`
+   proxy, which forwards the session (`iamnim_session` cookie, `X-Iamnim-Session`
+   header, or `?token=`) to the downstream provisioner at `/api/v1/provision`.
+   Responses: `503` (URL not configured), `401` (no session), `502` (provisioning
+   service unreachable), else the upstream status/body pass through verbatim.
 
-Network path: hydraperforceprovision listens on `195.201.88.170:8090`, UFW-limited
-to this portal node's egress IP (`94.224.39.25`), and is iamnim-session-gated.
-The venue egress IP can change; the durable fix is to reach it over the WireGuard
-mesh instead.
+Network path (Perforce): hydraperforceprovision listens on `195.201.88.170:8090`,
+UFW-limited to this portal node's egress IP (`94.224.39.25`), and is
+iamnim-session-gated. The venue egress IP can change; the durable fix is to reach
+it over the WireGuard mesh instead.
+
+Network path (git): hydragitprovision holds NO forge admin token. It hosts the
+per-project bare repos itself on a repo_root disk and serves iamnim-gated
+git-http, so the portal reaches it over the **WireGuard mesh**: set
+`provision.git_url` to the mesh address:port (`http://10.10.100.x:809x`). If it
+is instead exposed on a public IP, UFW-limit it to this portal node's egress IP
+exactly as the Perforce provisioner is. Either way it is iamnim-session-gated.
 
 ## Deployment
 

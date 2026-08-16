@@ -54,6 +54,55 @@ func (s *Server) handleProvisionPerforce(w http.ResponseWriter, r *http.Request)
 	_, _ = io.Copy(w, io.LimitReader(resp.Body, 1<<20))
 }
 
+// handleProvisionGit proxies a creator's git repo request to hydragitprovision,
+// forwarding their iamnim session. The portal holds no credentials:
+// hydragitprovision validates the session against iamnim, confirms org
+// membership, creates a per-project bare repo and receive hook, and returns the
+// git-http push remote (the clone URL). It holds no forge admin token. This is a
+// thin authenticated pass-through; the real auth, membership check and
+// provisioning all happen downstream. 1:1 with handleProvisionPerforce, only the
+// upstream URL differs.
+func (s *Server) handleProvisionGit(w http.ResponseWriter, r *http.Request) {
+	if s.provisionGitURL == "" {
+		writeProvisionError(w, http.StatusServiceUnavailable, "git provisioning is not configured")
+		return
+	}
+
+	session := iamnimSession(r)
+	if session == "" {
+		writeProvisionError(w, http.StatusUnauthorized, "sign in with iamnim first")
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<16))
+	if err != nil {
+		writeProvisionError(w, http.StatusBadRequest, "unreadable request body")
+		return
+	}
+
+	up, err := http.NewRequestWithContext(r.Context(), http.MethodPost,
+		s.provisionGitURL+"/api/v1/provision", bytes.NewReader(body))
+	if err != nil {
+		writeProvisionError(w, http.StatusInternalServerError, "could not build upstream request")
+		return
+	}
+	up.Header.Set("Content-Type", "application/json")
+	up.Header.Set("X-Iamnim-Session", session)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(up)
+	if err != nil {
+		writeProvisionError(w, http.StatusBadGateway, "provisioning service unreachable")
+		return
+	}
+	defer resp.Body.Close()
+
+	// Pass the upstream status and body straight back to the caller.
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, io.LimitReader(resp.Body, 1<<20))
+}
+
 // iamnimSession pulls the creator's session from the iamnim_session cookie, the
 // X-Iamnim-Session header, or a ?token= param.
 func iamnimSession(r *http.Request) string {
