@@ -56,6 +56,19 @@
             <p>Five steps. The whole thing takes about fifteen minutes the first time.</p>
         </div>
 
+        <div class="result" style="background:#141026; border-color:#2b2450; color:#c4b5fd;">
+            <b style="color:#ddd6fe;">Or: git push to deploy (the Linux pipeline).</b>
+            For a Linux/container service you do not have to build or launch anything
+            by hand. Push a <code style="color:#c4b5fd;background:#0e0e14;">v*</code> tag to your
+            watched repo and <b>hydragitwatcher → hydralinuxpipeline</b> builds your
+            <code style="color:#c4b5fd;background:#0e0e14;">Dockerfile</code> natively on an
+            arm64 builder, pushes the image to the scale registry, and deploys the scale
+            over the exec transport — the same result as the five steps below, on every tag.
+            See <b>Linux pipeline getting started</b> in the onboarding docs
+            (<code style="color:#c4b5fd;background:#0e0e14;">docs/onboarding/linux-pipeline-getting-started.md</code>).
+            It is operator-onboarded today; ask to have your repo watched.
+        </div>
+
         <div class="steps">
             <div class="step">
                 <h3>Containerize it to listen on :8080, plain HTTP</h3>
