@@ -58,8 +58,9 @@
 
         <div class="result" style="background:#141026; border-color:#2b2450; color:#c4b5fd;">
             <b style="color:#ddd6fe;">Or: git push to deploy (the Linux pipeline).</b>
-            For a Linux/container service you do not have to build or launch anything
-            by hand. Push a <code style="color:#c4b5fd;background:#0e0e14;">v*</code> tag to your
+            For an <b>OCI container</b> service (a <code style="color:#c4b5fd;background:#0e0e14;">Dockerfile</code>
+            that serves HTTP - not a binary, AppImage or desktop app) you do not have
+            to build or launch anything by hand. Push a <code style="color:#c4b5fd;background:#0e0e14;">v*</code> tag to your
             watched repo and <b>hydragitwatcher → hydralinuxpipeline</b> builds your
             <code style="color:#c4b5fd;background:#0e0e14;">Dockerfile</code> natively on an
             arm64 builder, pushes the image to the scale registry, and deploys the scale

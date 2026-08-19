@@ -8,6 +8,14 @@ HTTPS on a `*.experiencenet.com` domain.
 This is the git equivalent of the manual five steps on the Deploy page - it just
 happens on every tag.
 
+## Scope: OCI container scales only
+
+This pipeline builds and deploys **OCI container images** (from a `Dockerfile`),
+run as scales. It is NOT for binaries, AppImages or desktop apps - if your
+project is not a container that serves HTTP, it does not belong here. Those Linux
+builds (for example the hydraheadflatscreen agent or the HydraExperienceNet
+AppImage) run on their own CI and publish to the release server. arm64 only.
+
 ## The shape
 
 ```
